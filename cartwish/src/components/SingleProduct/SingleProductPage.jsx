@@ -1,55 +1,71 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import "./SingleProductPage.css";
 import QuantityInput from "./QuantityInput";
-
-const product = {
-  id: 1,
-  title: "Product Title",
-  description:
-    "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Maxime aliquid rerum a? Fugiat soluta facilis deleniti voluptatibus ab architecto dolores a, vero, beatae veniam error doloribus quia laudantium? Error fuga consequuntur quia accusantium? Consequatur modi laboriosam saepe culpa, ab atque.",
-  price: 9.99,
-  images: [
-    "https://static-mpm-optimized.s3.eu-west-2.amazonaws.com/5c1c9eb8-3880-427e-b921-2cf9fe58627e_large.png",
-    "https://static-mpm-optimized.s3.eu-west-2.amazonaws.com/5c1c9eb8-3880-427e-b921-2cf9fe58627e_large.png",
-    "https://static-mpm-optimized.s3.eu-west-2.amazonaws.com/5c1c9eb8-3880-427e-b921-2cf9fe58627e_large.png",
-    "https://static-mpm-optimized.s3.eu-west-2.amazonaws.com/5c1c9eb8-3880-427e-b921-2cf9fe58627e_large.png",
-  ],
-  stock: 10,
-};
+import { useParams } from "react-router-dom";
+import useData from "../../hooks/useData";
+import Loader from "../Common/Loader";
+import CartContext from "../../contexts/CartContext";
+import UserContext from "../../contexts/UserContext";
 
 const SingleProductPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const { id } = useParams();
+  const { addToCart } = useContext(CartContext);
+  const user = useContext(UserContext);
+
+  const { data: product, error, isLoading } = useData(`/products/${id}`);
   return (
     <section className="align_center single_product">
-      <div className="align_center">
-        <div className="single_product_thumbnails">
-          {product.images.map((image, index) => (
+      {error && <em className="form_error">{error}</em>}
+      {isLoading && <Loader />}
+      {product && (
+        <>
+          <div className="align_center">
+            <div className="single_product_thumbnails">
+              {product.images.map((image, index) => (
+                <img
+                  key={index}
+                  src={`http://localhost:5002/products/${image}`}
+                  alt={product.title}
+                  className={selectedImage === index ? "selected_image" : ""}
+                  onClick={() => setSelectedImage(index)}
+                />
+              ))}
+            </div>
             <img
-              key={index}
-              src={image}
+              src={`http://localhost:5002/products/${product.images[selectedImage]}`}
               alt={product.title}
-              className={selectedImage === index ? "selected_image" : ""}
-              onClick={() => setSelectedImage(index)}
+              className="single_product_display"
             />
-          ))}
-        </div>
-        <img
-          src={product.images[selectedImage]}
-          alt={product.title}
-          className="single_product_display"
-        />
-      </div>
+          </div>
 
-      <div className="single_product_details">
-        <h1 className="single_product_title">{product.title}</h1>
-        <p className="single_product_description">{product.description}</p>
-        <p className="single_product_price">${product.price.toFixed(2)}</p>
-        <h2 className="quantity_title">Quantity:</h2>
+          <div className="single_product_details">
+            <h1 className="single_product_title">{product.title}</h1>
+            <p className="single_product_description">{product.description}</p>
+            <p className="single_product_price">${product.price.toFixed(2)}</p>
 
-        <QuantityInput />
+            {user && (
+              <>
+                <h2 className="quantity_title">Quantity:</h2>
 
-        <button className="search_button add_cart">Add to Cart</button>
-      </div>
+                <QuantityInput
+                  quantity={quantity}
+                  setQuantity={setQuantity}
+                  stock={product.stock}
+                />
+
+                <button
+                  className="search_button add_cart"
+                  onClick={() => addToCart(product, quantity)}
+                >
+                  Add to Cart
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </section>
   );
 };
