@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import "./LoginPage.css";
-import { login } from "../../services/userServices";
-import { useLocation } from "react-router-dom";
+import { getUser, login } from "../../services/userServices";
+import { Navigate, useLocation } from "react-router-dom";
 
 const schema = z.object({
   email: z
@@ -36,6 +36,10 @@ const LoginPage = () => {
       }
     }
   };
+
+  if (getUser()) {
+    return <Navigate to="/" />;
+  }
 
   return (
     <section className="align_center form_page">
