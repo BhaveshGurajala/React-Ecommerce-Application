@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { memo, useContext, useMemo } from "react";
 import "./CartPage.css";
 import Table from "../Common/Table";
 import remove from "../../assets/remove.png";
@@ -9,17 +9,16 @@ import { checkoutAPI } from "../../services/orderServices";
 import { toast } from "react-toastify";
 
 const CartPage = () => {
-  const [subTotal, setSubTotal] = useState(0);
   const user = useContext(UserContext);
   const { cart, removeFromCart, updateCart, setCart } = useContext(CartContext);
 
-  useEffect(() => {
+  const subTotal = useMemo(() => {
     let total = 0;
     cart.forEach((item) => {
       total += item.product.price * item.quantity;
     });
-    setSubTotal(total);
-  });
+    return total;
+  }, [cart]);
 
   const checkout = () => {
     const oldCart = [...cart];
@@ -99,4 +98,4 @@ const CartPage = () => {
   );
 };
 
-export default CartPage;
+export default memo(CartPage);
