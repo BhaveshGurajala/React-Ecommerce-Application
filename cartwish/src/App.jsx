@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useReducer, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 
 import "./App.css";
@@ -6,22 +6,38 @@ import NavBar from "./components/NavBar/NavBar";
 import Routing from "./components/Routing/Routing";
 import { getJwt, getUser } from "./services/userServices";
 import setAuthToken from "./utils/setAuthToken";
-import {
-  addToCardAPI,
-  decreaseProductAPI,
-  getCartAPI,
-  increseProductAPI,
-  removeFromCartAPI,
-} from "./services/cartServices";
 import "react-toastify/ReactToastify.css";
 import UserContext from "./contexts/UserContext";
 import CartContext from "./contexts/CartContext";
+import useData from "./hooks/useData";
+import cartReducer from "./components/reducers/cartReducer";
+import useAddToCart from "./hooks/cart/useAddToCart";
+import useRemoveFromCart from "./hooks/cart/useRemoveFromCart";
+import useUpdateCart from "./hooks/cart/useUpdateCart";
 
 setAuthToken(getJwt());
 
 const App = () => {
   const [user, setUser] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [cart, dispatchCart] = useReducer(cartReducer, []);
+  const { data: cartData, refetch } = useData("/cart", null, ["cart"]);
+
+  const addToCartMutation = useAddToCart();
+  const removeFromCartMutation = useRemoveFromCart();
+  const updateCartMutation = useUpdateCart();
+
+  useEffect(() => {
+    if (cartData) {
+      dispatchCart({ type: "GET_CART", payload: { products: cartData } });
+    }
+  }, [cartData]);
+
+  useEffect(() => {
+    if (user) {
+      refetch();
+    }
+  }, [user]);
+
   useEffect(() => {
     try {
       const jwtUser = getUser();
@@ -36,90 +52,71 @@ const App = () => {
 
   const addToCart = useCallback(
     (product, quantity) => {
-      const updatedCart = [...cart];
-      const productIndex = updatedCart.findIndex(
-        (item) => item.product._id === product._id
+      dispatchCart({ type: "ADD_TO_CART", payload: { product, quantity } });
+
+      addToCartMutation.mutate(
+        { id: product._id, quantity: quantity },
+        {
+          onError: () => {
+            toast.error("Something went wrong!");
+            dispatchCart({ type: "REVERT_CART", payload: { cart } });
+          },
+        }
       );
-
-      if (productIndex === -1) {
-        updatedCart.push({ product: product, quantity: quantity });
-      } else {
-        updatedCart[productIndex].quantity += quantity;
-      }
-
-      setCart(updatedCart);
-      addToCardAPI(product._id, quantity)
-        .then((res) => {
-          toast.success("Product Added to Cart Successfully");
-        })
-        .catch((err) => {
-          toast.error("Failed to add product to the cart!");
-          setCart(cart);
-        });
     },
     [cart]
   );
 
   const removeFromCart = useCallback(
     (id) => {
-      const oldCart = [...cart];
-      const newCart = oldCart.filter((item) => item.product._id !== id);
-      setCart(newCart);
-      removeFromCartAPI(id).catch((err) => {
-        toast.error("Something went wrong!");
-        setCart(oldCart);
-      });
+      dispatchCart({ type: "REMOVE_FROM_CART", payload: { id } });
+
+      removeFromCartMutation.mutate(
+        { id },
+        {
+          onError: () => {
+            toast.error("Something went wrong!");
+            dispatchCart({ type: "REVERT_CART", payload: { cart } });
+          },
+        }
+      );
     },
     [cart]
   );
 
   const updateCart = useCallback(
     (type, id) => {
-      const oldCart = [...cart];
       const updatedCart = [...cart];
       const productIndex = updatedCart.findIndex(
         (item) => item.product._id === id
       );
+
       if (type === "increase") {
         updatedCart[productIndex].quantity += 1;
-        setCart(updatedCart);
-        increseProductAPI(id).catch((err) => {
-          toast.error("Something went wrong!");
-          setCart(oldCart);
-        });
       }
       if (type === "decrease") {
         updatedCart[productIndex].quantity -= 1;
-        setCart(updatedCart);
-        decreaseProductAPI(id).catch((err) => {
-          toast.error("Something went wrong!");
-          setCart(oldCart);
-        });
       }
+
+      dispatchCart({ type: "GET_CART", payload: { products: updatedCart } });
+
+      updateCartMutation.mutate(
+        { id, type },
+        {
+          onError: () => {
+            toast.error("Something went wrong!");
+            dispatchCart({ type: "REVERT_CART", payload: { cart } });
+          },
+        }
+      );
     },
     [cart]
   );
 
-  const getCart = useCallback(() => {
-    getCartAPI()
-      .then((res) => {
-        setCart(res.data);
-      })
-      .catch((err) => {
-        toast.error("Something went wrong!");
-      });
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      getCart();
-    }
-  }, [user]);
-
   return (
     <UserContext.Provider value={user}>
       <CartContext.Provider
-        value={{ cart, addToCart, removeFromCart, updateCart, setCart }}
+        value={{ cart, addToCart, removeFromCart, updateCart }}
       >
         <div className="app">
           <NavBar />

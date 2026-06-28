@@ -14,7 +14,11 @@ const SingleProductPage = () => {
   const { addToCart } = useContext(CartContext);
   const user = useContext(UserContext);
 
-  const { data: product, error, isLoading } = useData(`/products/${id}`);
+  const {
+    data: product,
+    error,
+    isLoading,
+  } = useData(`/products/${id}`, null, ["products", id]);
   return (
     <section className="align_center single_product">
       {error && <em className="form_error">{error}</em>}

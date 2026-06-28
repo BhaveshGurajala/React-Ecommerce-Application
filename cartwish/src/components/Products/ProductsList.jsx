@@ -5,31 +5,22 @@ import useData from "../../hooks/useData";
 import ProductCardSkeleton from "./ProductCardSkeleton";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../Common/Pagination";
+import useProductList from "../../hooks/useProductList";
 
 const ProductsList = () => {
-  const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("");
   const [sortedProducts, setSortedProducts] = useState([]);
   const [search, setSearch] = useSearchParams();
   const category = search.get("category");
   const searchQuery = search.get("search");
 
-  const { data, error, isLoading } = useData(
-    "/products",
-    {
-      params: {
-        search: searchQuery,
-        category,
-        perPage: 10,
-        page,
-      },
-    },
-    [searchQuery, category, page]
-  );
+  const { data, error, isFetching, hasNextPage, fetchNextPage } =
+    useProductList({
+      search: searchQuery,
+      category,
+      perPage: 10,
+    });
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, category]);
   const skeletons = [1, 2, 3, 4, 5, 6, 7, 8];
 
   useEffect(() => {
@@ -38,18 +29,18 @@ const ProductsList = () => {
         document.documentElement;
       if (
         scrollTop + clientHeight >= scrollHeight - 1 &&
-        !isLoading &&
-        data &&
-        page < data.totalPages
+        !isFetching &&
+        hasNextPage &&
+        data
       ) {
         console.log("Reached to Loda");
-        setPage((prev) => prev + 1);
+        fetchNextPage();
       }
     };
     window.addEventListener("scroll", handleScroll);
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [data, isLoading]);
+  }, [data, isFetching]);
 
   const handlePageChange = (page) => {
     const currentParams = Object.fromEntries([...search]);
@@ -57,8 +48,8 @@ const ProductsList = () => {
   };
 
   useEffect(() => {
-    if (data && data.products) {
-      const products = [...data.products];
+    if (data && data.pages) {
+      const products = data.pages.flatMap((page) => page.products);
 
       if (sortBy === "price desc") {
         setSortedProducts(products.sort((a, b) => b.price - a.price));
@@ -98,20 +89,11 @@ const ProductsList = () => {
 
       <div className="products_list">
         {error && <em className="form_error">{error}</em>}
-        {isLoading && skeletons.map((n) => <ProductCardSkeleton key={n} />)}
-        {data?.products &&
-          sortedProducts.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
+        {sortedProducts.map((product) => (
+          <ProductCard key={product._id} product={product} />
+        ))}
+        {isFetching && skeletons.map((n) => <ProductCardSkeleton key={n} />)}
       </div>
-      {/* {data && (
-        <Pagination
-          totalPosts={data.totalProducts}
-          postsPerPage={8}
-          onClick={handlePageChange}
-          currentPage={page}
-        />
-      )} */}
     </section>
   );
 };
