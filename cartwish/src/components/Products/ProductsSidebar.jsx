@@ -2,6 +2,7 @@ import React from "react";
 import "./ProductsSidebar.css";
 import LinkWithIcon from "../NavBar/LinkWithIcon";
 import useData from "../../hooks/useData";
+import config from "../../config.json";
 
 const ProductsSidebar = () => {
   const { data: categories, error } = useData(
@@ -23,7 +24,7 @@ const ProductsSidebar = () => {
               title={category.name}
               link={`/products?category=${category.name}`}
               sidebar={true}
-              emoji={`http://localhost:5002/category/${category.image}`}
+              emoji={`${config.backendURL}/category/${category.image}`}
             />
           ))}
       </div>
